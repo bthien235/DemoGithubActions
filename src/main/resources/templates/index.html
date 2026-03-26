@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thông tin sinh viên</title>
+    <link rel="stylesheet" th:href="@{/css/site.css}">
+</head>
+<body>
+    <main class="page-shell">
+        <section class="hero-card">
+            <div class="hero-copy">
+                <p class="eyebrow">Spring Boot | Docker | MySQL</p>
+                <h1>Thông tin cơ bản được lưu trong cơ sở dữ liệu</h1>
+                <p class="subtitle">
+                    Ứng dụng đọc dữ liệu từ MySQL và cho phép bạn nhập, chỉnh sửa hồ sơ trực tiếp
+                    bằng giao diện đơn sắc, gọn gàng và dễ sử dụng.
+                </p>
+            </div>
+
+            <div class="profile-panel">
+                <div class="panel-header">
+                    <span>Hồ sơ hiện tại</span>
+                    <span class="status-dot">Đang hoạt động</span>
+                </div>
+
+                <p class="notice" th:if="${saved}">
+                    Đã lưu thông tin thành công.
+                </p>
+
+                <dl class="info-grid">
+                    <div class="info-item">
+                        <dt>Họ và tên</dt>
+                        <dd th:text="${profile.fullName} ?: 'Chưa cập nhật'">Bùi Thanh Thiện</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Mã sinh viên</dt>
+                        <dd th:text="${profile.studentCode} ?: 'Chưa cập nhật'">2280603028</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Lớp</dt>
+                        <dd th:text="${profile.className} ?: 'Chưa cập nhật'">22DTHH2</dd>
+                    </div>
+                    <div class="info-item">
+                        <dt>Email</dt>
+                        <dd th:text="${profile.email} ?: 'Chưa cập nhật'">thien@example.com</dd>
+                    </div>
+                    <div class="info-item info-item--wide">
+                        <dt>Giới thiệu</dt>
+                        <dd th:text="${profile.bio} ?: 'Chưa cập nhật'">Sinh viên đang học và thực hành Docker cùng Spring Boot.</dd>
+                    </div>
+                </dl>
+            </div>
+        </section>
+
+        <section class="editor-card">
+            <div class="editor-header">
+                <div>
+                    <p class="section-label">Biểu mẫu chỉnh sửa</p>
+                    <h2>Cập nhật thông tin sinh viên</h2>
+                </div>
+                <p class="editor-note">Mọi thay đổi sẽ được lưu trực tiếp vào MySQL.</p>
+            </div>
+
+            <form class="profile-form" th:action="@{/profile}" th:object="${profile}" method="post">
+                <input type="hidden" th:field="*{id}">
+
+                <label class="field">
+                    <span>Họ và tên</span>
+                    <input type="text" th:field="*{fullName}" placeholder="Nhập họ và tên" required>
+                </label>
+
+                <label class="field">
+                    <span>Mã sinh viên</span>
+                    <input type="text" th:field="*{studentCode}" placeholder="Ví dụ: 2280603028" required>
+                </label>
+
+                <label class="field">
+                    <span>Lớp</span>
+                    <input type="text" th:field="*{className}" placeholder="Ví dụ: 22DTHH2" required>
+                </label>
+
+                <label class="field">
+                    <span>Email</span>
+                    <input type="email" th:field="*{email}" placeholder="Nhập địa chỉ email" required>
+                </label>
+
+                <label class="field field--full">
+                    <span>Giới thiệu</span>
+                    <textarea th:field="*{bio}" rows="5" placeholder="Mô tả ngắn về bản thân" required></textarea>
+                </label>
+
+                <div class="form-actions">
+                    <button type="submit">Lưu thông tin</button>
+                </div>
+            </form>
+        </section>
+    </main>
+</body>
+</html>
