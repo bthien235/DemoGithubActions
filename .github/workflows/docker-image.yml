@@ -55,7 +55,7 @@ jobs:
 
       - name: Triển khai lên DevOps Classroom
         env:
-          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
+          WEBHOOK_URL: ${{ secrets.DEPLOY_URL }}
         run: |
           REPO="thiennt04/demogithubaction"
           CONTAINER_PORT=80
