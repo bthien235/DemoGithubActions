@@ -61,7 +61,7 @@ jobs:
 
           for i in $(seq 1 $MAX_RETRIES); do
             echo "Deploy attempt $i/$MAX_RETRIES"
-            RESPONSE=$(curl -sS --connect-timeout 10 --max-time 120 -w "\n%{http_code}" -X POST "${{ secrets.DEPLOY_URL }}?repo=$REPO&tag=latest&slot=1&container_port=$CONTAINER_PORT&strict_container_port=0")
+            RESPONSE=$(curl -sS --connect-timeout 10 --max-time 120 -w "\n%{http_code}" -X POST "${{ secrets.DEPLOY_URL }}?repo=$REPO&tag=latest&slot=1&container_port=$CONTAINER_PORT&strict_container_port=0" || true)
             BODY=$(echo "$RESPONSE" | sed '$d')
             CODE=$(echo "$RESPONSE" | tail -n1)
             LAST_BODY="$BODY"
@@ -93,3 +93,4 @@ jobs:
 
           echo "Deploy failed with HTTP $LAST_CODE"
           exit 1
+
