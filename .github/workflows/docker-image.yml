@@ -17,6 +17,7 @@ env:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     permissions:
       contents: read
 
@@ -40,6 +41,7 @@ jobs:
           images: thiennt04/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest
+            type=sha
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v6
@@ -49,23 +51,50 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Triển khai lên DevOps Classroom
+      - name: Deploy to DevOps Classroom
+        env:
+          REPO: thiennt04/demogithubaction
+          CONTAINER_PORT: "80"
         run: |
-          REPO="thiennt04/demogithubaction"
-          CONTAINER_PORT=80
-          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST "${{ secrets.DEPLOY_URL }}?repo=$REPO&tag=latest&slot=1&container_port=$CONTAINER_PORT&strict_container_port=0")
-          BODY=$(echo "$RESPONSE" | sed "$d")
-          CODE=$(echo "$RESPONSE" | tail -n1)
-          echo "Webhook HTTP: $CODE"
-          if [ "$CODE" -lt 200 ] || [ "$CODE" -ge 300 ]; then
-            echo "Deploy thất bại. Xem chi tiết trong nhóm log bên dưới."
-            echo "::group::Chi tiết webhook JSON"
+          set -euo pipefail
+          DEPLOY_URL="${{ secrets.DEPLOY_URL }}?repo=${REPO}&tag=latest&slot=1&container_port=${CONTAINER_PORT}&strict_container_port=0"
+          MAX_ATTEMPTS=3
+          RETRY_DELAY_SECONDS=20
+
+          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
+            echo "Deploy attempt ${attempt}/${MAX_ATTEMPTS}"
+            RESPONSE="$(curl -sS -w "\n%{http_code}" -X POST \
+              --connect-timeout 10 \
+              --max-time 110 \
+              "$DEPLOY_URL" || true)"
+
+            BODY="$(echo "$RESPONSE" | sed '$d')"
+            CODE="$(echo "$RESPONSE" | tail -n1)"
+            echo "Webhook HTTP: $CODE"
+
+            if [[ "$CODE" =~ ^2[0-9]{2}$ ]]; then
+              echo "Deploy succeeded."
+              echo "::group::Webhook response"
+              echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
+              echo "::endgroup::"
+              exit 0
+            fi
+
+            echo "::group::Webhook response (attempt ${attempt})"
             echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
             echo "::endgroup::"
+
+            if [[ "$CODE" == "524" || "$CODE" == "429" || "$CODE" =~ ^5[0-9]{2}$ ]]; then
+              if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
+                echo "Transient deploy error ($CODE). Waiting ${RETRY_DELAY_SECONDS}s before retry..."
+                sleep "$RETRY_DELAY_SECONDS"
+                continue
+              fi
+            fi
+
+            echo "Deploy failed with HTTP $CODE."
             exit 1
-          fi
-          echo "Deploy thành công."
-          echo "::group::Chi tiết webhook JSON"
-          echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
-          echo "::endgroup::"
+          done
