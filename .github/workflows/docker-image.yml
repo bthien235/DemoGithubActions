@@ -54,48 +54,22 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Deploy to DevOps Classroom
-        env:
-          REPO: thiennt04/demogithubaction
-          CONTAINER_PORT: "80"
+      - name: Triển khai lên DevOps Classroom
         run: |
-          set -euo pipefail
-          DEPLOY_URL="${{ secrets.DEPLOY_URL }}?repo=${REPO}&tag=latest&slot=1&container_port=${CONTAINER_PORT}&strict_container_port=0"
-          MAX_ATTEMPTS=3
-          RETRY_DELAY_SECONDS=20
-
-          for attempt in $(seq 1 "$MAX_ATTEMPTS"); do
-            echo "Deploy attempt ${attempt}/${MAX_ATTEMPTS}"
-            RESPONSE="$(curl -sS -w "\n%{http_code}" -X POST \
-              --connect-timeout 10 \
-              --max-time 110 \
-              "$DEPLOY_URL" || true)"
-
-            BODY="$(echo "$RESPONSE" | sed '$d')"
-            CODE="$(echo "$RESPONSE" | tail -n1)"
-            echo "Webhook HTTP: $CODE"
-
-            if [[ "$CODE" =~ ^2[0-9]{2}$ ]]; then
-              echo "Deploy succeeded."
-              echo "::group::Webhook response"
-              echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
-              echo "::endgroup::"
-              exit 0
-            fi
-
-            echo "::group::Webhook response (attempt ${attempt})"
+          REPO="thiennt04/demogithubaction"
+          CONTAINER_PORT=80
+          RESPONSE=$(curl -sS -w "\n%{http_code}" -X POST "${{ secrets.DEPLOY_URL }}?repo=$REPO&tag=latest&slot=1&container_port=$CONTAINER_PORT&strict_container_port=0")
+          BODY=$(echo "$RESPONSE" | sed '$d')
+          CODE=$(echo "$RESPONSE" | tail -n1)
+          echo "Webhook HTTP: $CODE"
+          if [ "$CODE" -lt 200 ] || [ "$CODE" -ge 300 ]; then
+            echo "Deploy thất bại. Xem chi tiết trong nhóm log bên dưới."
+            echo "::group::Chi tiết webhook JSON"
             echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
             echo "::endgroup::"
-
-            # Retry all non-2xx responses while attempts remain.
-            # Timeouts/network errors usually produce code 000 (or empty).
-            if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
-              echo "Deploy not successful (HTTP ${CODE:-empty}). Waiting ${RETRY_DELAY_SECONDS}s before retry..."
-              sleep "$RETRY_DELAY_SECONDS"
-              continue
-            fi
-
-            echo "Deploy failed after ${MAX_ATTEMPTS} attempts (last HTTP: ${CODE:-empty})."
             exit 1
-          done
-
+          fi
+          echo "Deploy thành công."
+          echo "::group::Chi tiết webhook JSON"
+          echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
+          echo "::endgroup::"
