@@ -87,14 +87,15 @@ jobs:
             echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
             echo "::endgroup::"
 
-            if [[ "$CODE" == "524" || "$CODE" == "429" || "$CODE" =~ ^5[0-9]{2}$ ]]; then
-              if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
-                echo "Transient deploy error ($CODE). Waiting ${RETRY_DELAY_SECONDS}s before retry..."
-                sleep "$RETRY_DELAY_SECONDS"
-                continue
-              fi
+            # Retry all non-2xx responses while attempts remain.
+            # Timeouts/network errors usually produce code 000 (or empty).
+            if [ "$attempt" -lt "$MAX_ATTEMPTS" ]; then
+              echo "Deploy not successful (HTTP ${CODE:-empty}). Waiting ${RETRY_DELAY_SECONDS}s before retry..."
+              sleep "$RETRY_DELAY_SECONDS"
+              continue
             fi
 
-            echo "Deploy failed with HTTP $CODE."
+            echo "Deploy failed after ${MAX_ATTEMPTS} attempts (last HTTP: ${CODE:-empty})."
             exit 1
           done
+
