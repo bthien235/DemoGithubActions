@@ -54,19 +54,25 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Triển khai lên DevOps Classroom
+        env:
+          WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
         run: |
           REPO="thiennt04/demogithubaction"
           CONTAINER_PORT=80
+
           RESPONSE=$(curl -sS \
             --max-time 600 \
             --connect-timeout 30 \
             --retry 3 \
             --retry-delay 5 \
             -w "\n%{http_code}" \
-            -X POST "***?repo=$REPO&tag=latest&slot=8&container_port=$CONTAINER_PORT&strict_container_port=0")
+            -X POST "$WEBHOOK_URL?repo=$REPO&tag=latest&slot=8&container_port=$CONTAINER_PORT&strict_container_port=0")
+
           BODY=$(echo "$RESPONSE" | sed '$d')
           CODE=$(echo "$RESPONSE" | tail -n1)
+
           echo "Webhook HTTP: $CODE"
+
           if [ "$CODE" -lt 200 ] || [ "$CODE" -ge 300 ]; then
             echo "Deploy thất bại. Xem chi tiết trong nhóm log bên dưới."
             echo "::group::Chi tiết webhook JSON"
@@ -74,6 +80,7 @@ jobs:
             echo "::endgroup::"
             exit 1
           fi
+
           echo "Deploy thành công."
           echo "::group::Chi tiết webhook JSON"
           echo "$BODY" | python3 -m json.tool 2>/dev/null || echo "$BODY"
